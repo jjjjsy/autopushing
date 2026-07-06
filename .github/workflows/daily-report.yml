@@ -1,0 +1,45 @@
+name: 每日市场情报推送
+
+on:
+  schedule:
+    # UTC 0:30 = 北京时间 8:30，周一到周五
+    - cron: '30 0 * * 1-5'
+  workflow_dispatch: # 支持手动触发
+
+jobs:
+  send-daily-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          npm install -g westock-data-clawhub@1.0.4
+          pip install requests
+
+      - name: 发送每日日报
+        env:
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: python3 daily_report_auto.py
+
+      - name: 上传 HTML 预览（可选）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-report-${{ github.run_id }}
+          path: logs/preview_*.html
+          if-no-files-found: ignore
+          retention-days: 7

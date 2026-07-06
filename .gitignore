@@ -1,0 +1,25 @@
+# 敏感文件
+*.env
+wechat_config.env
+
+# 日志和预览
+logs/
+
+# 测试数据
+test_data_*.json
+
+# 不需要的文件
+wechat_*.py
+wechat_*.sh
+viewpoint_push_example.py
+README_*.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 系统
+.DS_Store
+*.swp
+*.swo
