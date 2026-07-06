@@ -429,41 +429,98 @@ def _collect_all_indices() -> dict:
 
 def _collect_news() -> list:
     """
-    采集财经新闻（东方财富快讯 API）
-    如果 API 不可用，返回空列表（日报仍会发送，只是新闻部分为空）
+    采集财经新闻（多源容错）
+    依次尝试：东方财富快讯API → 东方财富新闻页面抓取 → 生成基础新闻
     """
     news_items = []
 
-    # 尝试东方财富 7x24 快讯
-    try:
-        resp = _requests.get(
-            "https://np-listapi.eastmoney.com/comm/web/getFastNewsList",
-            params={
-                "client": "web",
-                "biz": "web_724",
-                "fastColumn": "102",
-                "sortEnd": "",
-                "pageSize": "20",
+    # 方法1: 东方财富 7x24 快讯 API（尝试多个端点）
+    em_endpoints = [
+        {
+            "url": "https://np-listapi.eastmoney.com/comm/web/getFastNewsList",
+            "params": {
+                "client": "web", "biz": "web_724", "fastColumn": "102",
+                "sortEnd": "", "pageSize": "20",
                 "req_trace": str(int(_time.time() * 1000)),
             },
-            headers=_EASTMONEY_HEADERS,
-            timeout=10,
-        )
-        data = resp.json()
-        if data.get("data"):
-            items = data["data"].get("list", [])
-            for item in items[:10]:
-                title = item.get("title", "") or item.get("content", "")[:60]
-                summary = item.get("content", "")[:150]
-                if title:
+        },
+        {
+            "url": "https://np-listapi.eastmoney.com/comm/web/getListByDirection",
+            "params": {
+                "client": "web", "biz": "web_724",
+                "direction": "down", "pageSize": "20",
+                "req_trace": str(int(_time.time() * 1000)),
+            },
+        },
+    ]
+
+    for ep in em_endpoints:
+        if news_items:
+            break
+        try:
+            resp = _requests.get(ep["url"], params=ep["params"], headers=_EASTMONEY_HEADERS, timeout=10)
+            data = resp.json()
+            if data.get("data"):
+                items = data["data"].get("list", data["data"].get("roll_data", []))
+                for item in items[:10]:
+                    title = item.get("title", "") or item.get("content", "")[:80]
+                    summary = item.get("content", "")[:150] if item.get("content") else title
+                    if title:
+                        news_items.append({
+                            "title": title[:80],
+                            "summary": summary,
+                            "importance": 3,
+                            "source_type": "official",
+                        })
+        except Exception:
+            pass
+
+    # 方法2: 抓取东方财富新闻页面
+    if not news_items:
+        try:
+            resp = _requests.get(
+                "https://finance.eastmoney.com/a/czqyw.html",
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+                timeout=10,
+            )
+            resp.encoding = "utf-8"
+            # 提取新闻标题（东方财富新闻页面格式）
+            titles = re.findall(r'<a[^>]*title="([^"]{10,80})"[^>]*href="https://finance\.eastmoney\.com/a/[^"]*"', resp.text)
+            for title in titles[:8]:
+                news_items.append({
+                    "title": title,
+                    "summary": title,
+                    "importance": 3,
+                    "source_type": "official",
+                })
+        except Exception:
+            pass
+
+    # 方法3: 新浪财经 RSS
+    if not news_items:
+        try:
+            resp = _requests.get(
+                "https://finance.sina.com.cn/roll/index.d.html",
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=10,
+            )
+            resp.encoding = "utf-8"
+            titles = re.findall(r'<a[^>]*>([^<]{10,80})</a>', resp.text)
+            seen = set()
+            for title in titles:
+                title = title.strip()
+                if title not in seen and len(title) > 10 and not title.startswith("http"):
+                    seen.add(title)
                     news_items.append({
                         "title": title[:80],
-                        "summary": summary,
+                        "summary": title,
                         "importance": 3,
                         "source_type": "official",
                     })
-    except Exception:
-        pass
+                    if len(news_items) >= 8:
+                        break
+        except Exception:
+            pass
 
     return news_items
 
