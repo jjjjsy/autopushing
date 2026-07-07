@@ -208,11 +208,11 @@ def _build_news_html(news_items: list) -> str:
         badge = build_importance_badge(item.get("importance", 2))
         src_badge = build_source_badge(item.get("source_type", "analysis"))
 
-        items_html += f'''<div style="border-bottom:1px solid #f0f0f0;padding:10px 0">
-    <div style="font-size:14px;font-weight:600;color:#212121;margin-bottom:4px;line-height:1.5">
+        items_html += f'''<div style="border-bottom:1px solid #f0f0f0;padding:12px 0">
+    <div style="font-size:14px;font-weight:600;color:#212121;margin-bottom:6px;line-height:1.5">
         {item.get("title", "")}{badge}{src_badge}
     </div>
-    <div style="font-size:12px;color:#757575;line-height:1.6">
+    <div style="font-size:13px;color:#555;line-height:1.8">
         {item.get("summary", "")}
     </div>
 </div>'''
@@ -458,8 +458,8 @@ def _collect_news() -> list:
                         seen_titles.add(title)
                         intro = item.get("intro", "")
                         news_items.append({
-                            "title": title[:80],
-                            "summary": intro[:150] if intro else title[:150],
+                            "title": title[:200],
+                            "summary": intro[:500] if intro else title[:500],
                             "importance": 3,
                             "source_type": "official",
                         })
