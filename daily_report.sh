@@ -64,6 +64,16 @@ log "Dry run: ${DRY_RUN}"
 log "数据文件: ${DATA_FILE:-自动采集}"
 log "=========================================="
 
+# 触发 GitHub Actions（云端数据采集，确保即使本地失败也有备份）
+log "触发 GitHub Actions..."
+GH_TOKEN="${GH_TOKEN:-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}"
+export GH_TOKEN
+if gh workflow run daily-report.yml -R jjjjsy/autopushing 2>/dev/null; then
+    log "  GHA 触发成功"
+else
+    log "  GHA 触发失败（可忽略，本地模式继续）"
+fi
+
 # 构建命令
 CMD="python3 ${SCRIPT_DIR}/daily_report_auto.py"
 
