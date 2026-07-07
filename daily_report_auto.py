@@ -459,7 +459,7 @@ def _collect_news() -> list:
                         intro = item.get("intro", "")
                         news_items.append({
                             "title": title[:200],
-                            "summary": intro[:500] if intro else title[:500],
+                            "summary": intro[:1000] if intro else title[:1000],
                             "importance": 3,
                             "source_type": "official",
                         })
